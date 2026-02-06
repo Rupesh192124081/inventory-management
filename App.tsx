@@ -1,26 +1,23 @@
-
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  LayoutDashboard, 
-  Package, 
-  Receipt, 
-  Users, 
-  BarChart3, 
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  LayoutDashboard,
+  Package,
+  Receipt,
+  Users,
+  BarChart3,
   ShieldCheck,
   Menu,
   Bell,
-  Search,
   LogOut,
   ChevronLeft,
   ChevronRight,
-  AlertCircle,
   FileClock,
   Download,
-  Upload,
   Bot,
   Settings,
   X,
-  CheckCircle2
+  Store,
+  ArrowRight
 } from 'lucide-react';
 import { View, Item, Party, Invoice, Expense, PaymentRecord, BusinessProfile, AppNotification } from './types';
 import Dashboard from './components/Dashboard';
@@ -33,12 +30,40 @@ import InvoiceHistory from './components/InvoiceHistory';
 import AIAssistant from './components/AIAssistant';
 import SettingsView from './components/SettingsView';
 
+// Storefront Pages
+import StorefrontHome from './pages/Home';
+import StorefrontProducts from './pages/Products';
+import StorefrontProductDetail from './pages/ProductDetail';
+import StorefrontCart from './pages/Cart';
+import StorefrontCheckout from './pages/Checkout';
+
+// Storefront Components with renamed imports to avoid conflicts
+import StorefrontHeader from './components/storefront/layout/Header';
+import StorefrontFooter from './components/storefront/layout/Footer';
+import { ToastProvider } from './components/storefront/ToastContext';
+import ErrorBoundary from './components/storefront/common/ErrorBoundary';
+
+type AppMode = 'admin' | 'storefront';
+type StorefrontPage = 'home' | 'products' | 'product-detail' | 'cart' | 'checkout';
+
 const App: React.FC = () => {
+  // Determine initial mode from URL
+  const getInitialMode = (): AppMode => {
+    const path = window.location.pathname;
+    if (path.startsWith('/admin')) return 'admin';
+    return 'storefront';
+  };
+
+  const [appMode, setAppMode] = useState<AppMode>(getInitialMode());
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAIChatOpen, setAIChatOpen] = useState(false);
   const [isNotificationOpen, setNotificationOpen] = useState(false);
+
+  // Storefront state
+  const [storefrontPage, setStorefrontPage] = useState<StorefrontPage>('home');
+  const [currentProductId, setCurrentProductId] = useState<string>('');
 
   // Core State
   const [items, setItems] = useState<Item[]>([]);
@@ -56,7 +81,7 @@ const App: React.FC = () => {
   });
 
   const lowStockItems = useMemo(() => items.filter(i => i.stock <= i.minStock), [items]);
-  
+
   const notifications: AppNotification[] = useMemo(() => {
     const list: AppNotification[] = [];
     if (lowStockItems.length > 0) {
@@ -83,6 +108,7 @@ const App: React.FC = () => {
     return list;
   }, [lowStockItems, parties, profile.currency]);
 
+  // Load data from localStorage
   useEffect(() => {
     const savedItems = localStorage.getItem('vyapar_items');
     const savedParties = localStorage.getItem('vyapar_parties');
@@ -97,6 +123,7 @@ const App: React.FC = () => {
     if (savedProfile) setProfile(JSON.parse(savedProfile));
   }, []);
 
+  // Save data to localStorage
   useEffect(() => {
     localStorage.setItem('vyapar_items', JSON.stringify(items));
     localStorage.setItem('vyapar_parties', JSON.stringify(parties));
@@ -104,6 +131,77 @@ const App: React.FC = () => {
     localStorage.setItem('vyapar_expenses', JSON.stringify(expenses));
     localStorage.setItem('vyapar_profile', JSON.stringify(profile));
   }, [items, parties, invoices, expenses, profile]);
+
+  // Handle URL routing
+  const navigateTo = useCallback((path: string) => {
+    window.history.pushState({}, '', path);
+
+    if (path.startsWith('/admin')) {
+      setAppMode('admin');
+    } else {
+      setAppMode('storefront');
+
+      if (path === '/' || path === '/home') {
+        setStorefrontPage('home');
+      } else if (path.startsWith('/product/')) {
+        const productId = path.split('/product/')[1];
+        setCurrentProductId(productId);
+        setStorefrontPage('product-detail');
+      } else if (path === '/products') {
+        setStorefrontPage('products');
+      } else if (path === '/cart') {
+        setStorefrontPage('cart');
+      } else if (path === '/checkout') {
+        setStorefrontPage('checkout');
+      }
+    }
+  }, []);
+
+  // Handle browser back/forward
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path.startsWith('/admin')) {
+        setAppMode('admin');
+      } else {
+        setAppMode('storefront');
+        if (path === '/' || path === '/home') setStorefrontPage('home');
+        else if (path.startsWith('/product/')) {
+          setCurrentProductId(path.split('/product/')[1]);
+          setStorefrontPage('product-detail');
+        }
+        else if (path === '/products') setStorefrontPage('products');
+        else if (path === '/cart') setStorefrontPage('cart');
+        else if (path === '/checkout') setStorefrontPage('checkout');
+      }
+    };
+
+    // Handle initial route
+    handlePopState();
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Handle storefront link clicks
+  useEffect(() => {
+    if (appMode !== 'storefront') return;
+
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest('a');
+
+      if (link && link.href.startsWith(window.location.origin)) {
+        e.preventDefault();
+        const path = link.pathname;
+        navigateTo(path);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [appMode, navigateTo]);
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -126,6 +224,14 @@ const App: React.FC = () => {
     a.click();
   };
 
+  const switchToStorefront = () => {
+    navigateTo('/');
+  };
+
+  const switchToAdmin = () => {
+    navigateTo('/admin');
+  };
+
   const SidebarContent = () => (
     <div className="h-full flex flex-col">
       <div className="h-20 flex items-center px-6 shrink-0">
@@ -145,7 +251,11 @@ const App: React.FC = () => {
           </button>
         ))}
       </nav>
-      <div className="p-4 border-t border-slate-100">
+      <div className="p-4 border-t border-slate-100 space-y-2">
+        <button onClick={switchToStorefront} className="w-full flex items-center px-4 py-3 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-2xl transition-colors">
+          <Store className={`w-5 h-5 shrink-0 ${isSidebarOpen || isMobileMenuOpen ? 'mr-3' : 'mx-auto'}`} />
+          {(isSidebarOpen || isMobileMenuOpen) && <span className="font-bold">View Storefront</span>}
+        </button>
         <button className="w-full flex items-center px-4 py-3 text-slate-500 hover:bg-rose-50 hover:text-rose-600 rounded-2xl transition-colors">
           <LogOut className={`w-5 h-5 shrink-0 ${isSidebarOpen || isMobileMenuOpen ? 'mr-3' : 'mx-auto'}`} />
           {(isSidebarOpen || isMobileMenuOpen) && <span className="font-bold">Sign Out</span>}
@@ -154,11 +264,44 @@ const App: React.FC = () => {
     </div>
   );
 
+  // STOREFRONT RENDER
+  if (appMode === 'storefront') {
+    return (
+      <ToastProvider>
+        <ErrorBoundary>
+          <div className="min-h-screen flex flex-col">
+            <StorefrontHeader />
+
+            {/* Admin Access Banner */}
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2 px-4 text-center">
+              <button onClick={switchToAdmin} className="text-sm font-bold hover:underline inline-flex items-center">
+                <span className="opacity-80">Admin Access</span>
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </button>
+            </div>
+
+            <main className="flex-1">
+              <ErrorBoundary>
+                {storefrontPage === 'home' && <StorefrontHome />}
+                {storefrontPage === 'products' && <StorefrontProducts />}
+                {storefrontPage === 'product-detail' && <StorefrontProductDetail productId={currentProductId} />}
+                {storefrontPage === 'cart' && <StorefrontCart />}
+                {storefrontPage === 'checkout' && <StorefrontCheckout />}
+              </ErrorBoundary>
+            </main>
+            <StorefrontFooter />
+          </div>
+        </ErrorBoundary>
+      </ToastProvider>
+    );
+  }
+
+  // ADMIN DASHBOARD RENDER
   return (
     <div className="min-h-screen flex bg-slate-50 text-slate-900">
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden" onClick={() => setMobileMenuOpen(false)} />}
-      
+
       {/* Desktop Sidebar */}
       <aside className={`fixed inset-y-0 left-0 bg-white border-r border-slate-200 z-50 transition-all duration-300 hidden lg:block ${isSidebarOpen ? 'w-[280px]' : 'w-[88px]'}`}>
         <SidebarContent />
@@ -178,37 +321,37 @@ const App: React.FC = () => {
             <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden p-2.5 bg-slate-100 rounded-xl text-slate-600"><Menu className="w-5 h-5" /></button>
             <h2 className="text-[10px] font-black uppercase text-indigo-600 tracking-widest hidden sm:block">{activeView} Mode</h2>
           </div>
-          
+
           <div className="flex items-center space-x-2 sm:space-x-4">
-             <button onClick={handleExportData} title="Backup Data" className="p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-indigo-600 hidden xs:flex"><Download className="w-5 h-5" /></button>
-             <button onClick={() => setNotificationOpen(!isNotificationOpen)} className="p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-indigo-600 relative">
-               <Bell className="w-5 h-5" />
-               {notifications.length > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>}
-             </button>
-             <button onClick={() => setAIChatOpen(true)} className="flex items-center px-4 py-2.5 bg-indigo-600 text-white rounded-2xl font-black text-xs shadow-lg shadow-indigo-100 hover:scale-105 transition-all">
-               <Bot className="w-4 h-4 mr-2" /> <span className="hidden xs:inline">AI Expert</span>
-             </button>
+            <button onClick={handleExportData} title="Backup Data" className="p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-indigo-600 hidden xs:flex"><Download className="w-5 h-5" /></button>
+            <button onClick={() => setNotificationOpen(!isNotificationOpen)} className="p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-indigo-600 relative">
+              <Bell className="w-5 h-5" />
+              {notifications.length > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>}
+            </button>
+            <button onClick={() => setAIChatOpen(true)} className="flex items-center px-4 py-2.5 bg-indigo-600 text-white rounded-2xl font-black text-xs shadow-lg shadow-indigo-100 hover:scale-105 transition-all">
+              <Bot className="w-4 h-4 mr-2" /> <span className="hidden xs:inline">AI Expert</span>
+            </button>
           </div>
 
           {/* Notifications Dropdown */}
           {isNotificationOpen && (
             <div className="absolute top-20 right-8 w-80 bg-white border border-slate-200 shadow-2xl rounded-3xl p-6 z-50 animate-in fade-in slide-in-from-top-4">
-               <div className="flex justify-between items-center mb-4">
-                  <h4 className="font-black text-slate-900">Notifications</h4>
-                  <button onClick={() => setNotificationOpen(false)}><X className="w-4 h-4 text-slate-400" /></button>
-               </div>
-               <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-8">All clear! No alerts.</p>
-                  ) : (
-                    notifications.map((n, i) => (
-                      <div key={i} className={`p-4 rounded-2xl border ${n.type === 'warning' ? 'bg-rose-50 border-rose-100' : 'bg-indigo-50 border-indigo-100'}`}>
-                        <p className={`text-[10px] font-black uppercase mb-1 ${n.type === 'warning' ? 'text-rose-600' : 'text-indigo-600'}`}>{n.title}</p>
-                        <p className="text-xs font-bold text-slate-700">{n.message}</p>
-                      </div>
-                    ))
-                  )}
-               </div>
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="font-black text-slate-900">Notifications</h4>
+                <button onClick={() => setNotificationOpen(false)}><X className="w-4 h-4 text-slate-400" /></button>
+              </div>
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-8">All clear! No alerts.</p>
+                ) : (
+                  notifications.map((n, i) => (
+                    <div key={i} className={`p-4 rounded-2xl border ${n.type === 'warning' ? 'bg-rose-50 border-rose-100' : 'bg-indigo-50 border-indigo-100'}`}>
+                      <p className={`text-[10px] font-black uppercase mb-1 ${n.type === 'warning' ? 'text-rose-600' : 'text-indigo-600'}`}>{n.title}</p>
+                      <p className="text-xs font-bold text-slate-700">{n.message}</p>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
         </header>
