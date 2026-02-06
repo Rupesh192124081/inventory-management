@@ -225,8 +225,13 @@ export const demoProducts: Item[] = [
 
 // Function to seed demo data into localStorage
 export const seedDemoData = () => {
-    // Save products to both keys for compatibility
+    // Check if already seeded
+    const alreadySeeded = localStorage.getItem('demo_data_seeded');
+
+    // Save products to vyapar_items (admin uses this)
     localStorage.setItem('vyapar_items', JSON.stringify(demoProducts));
+
+    // Also save to storefront_products for compatibility
     localStorage.setItem('storefront_products', JSON.stringify(demoProducts));
 
     // Initialize other data if not exists
@@ -276,6 +281,10 @@ export const seedDemoData = () => {
         localStorage.setItem('vyapar_profile', JSON.stringify(profile));
     }
 
-    console.log('✅ Demo data seeded successfully!');
-    console.log(`📦 ${demoProducts.length} products added to inventory`);
+    localStorage.setItem('demo_data_seeded', 'true');
+
+    if (!alreadySeeded) {
+        console.log('✅ Demo data seeded successfully!');
+        console.log(`📦 ${demoProducts.length} products added to inventory`);
+    }
 };

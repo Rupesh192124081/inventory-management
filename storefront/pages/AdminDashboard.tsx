@@ -43,6 +43,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isAIChatOpen, setAIChatOpen] = useState(false);
     const [isNotificationOpen, setNotificationOpen] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
 
     // Core State
     const [items, setItems] = useState<Item[]>([]);
@@ -87,6 +88,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         return list;
     }, [lowStockItems, parties, profile.currency]);
 
+    // Load data from localStorage on mount
     useEffect(() => {
         const savedItems = localStorage.getItem('vyapar_items');
         const savedParties = localStorage.getItem('vyapar_parties');
@@ -99,27 +101,41 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         if (savedInvoices) setInvoices(JSON.parse(savedInvoices));
         if (savedExpenses) setExpenses(JSON.parse(savedExpenses));
         if (savedProfile) setProfile(JSON.parse(savedProfile));
+
+        // Mark as initialized after loading
+        setIsInitialized(true);
     }, []);
 
+    // Save to localStorage only after initialization
     useEffect(() => {
-        localStorage.setItem('vyapar_items', JSON.stringify(items));
-    }, [items]);
+        if (isInitialized) {
+            localStorage.setItem('vyapar_items', JSON.stringify(items));
+        }
+    }, [items, isInitialized]);
 
     useEffect(() => {
-        localStorage.setItem('vyapar_parties', JSON.stringify(parties));
-    }, [parties]);
+        if (isInitialized) {
+            localStorage.setItem('vyapar_parties', JSON.stringify(parties));
+        }
+    }, [parties, isInitialized]);
 
     useEffect(() => {
-        localStorage.setItem('vyapar_invoices', JSON.stringify(invoices));
-    }, [invoices]);
+        if (isInitialized) {
+            localStorage.setItem('vyapar_invoices', JSON.stringify(invoices));
+        }
+    }, [invoices, isInitialized]);
 
     useEffect(() => {
-        localStorage.setItem('vyapar_expenses', JSON.stringify(expenses));
-    }, [expenses]);
+        if (isInitialized) {
+            localStorage.setItem('vyapar_expenses', JSON.stringify(expenses));
+        }
+    }, [expenses, isInitialized]);
 
     useEffect(() => {
-        localStorage.setItem('vyapar_profile', JSON.stringify(profile));
-    }, [profile]);
+        if (isInitialized) {
+            localStorage.setItem('vyapar_profile', JSON.stringify(profile));
+        }
+    }, [profile, isInitialized]);
 
     const menuItems = [
         { id: 'dashboard' as View, label: 'Dashboard', icon: LayoutDashboard },
