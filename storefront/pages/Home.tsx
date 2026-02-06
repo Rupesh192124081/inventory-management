@@ -1,37 +1,13 @@
 import React from 'react';
 import { ArrowRight, Star, TrendingUp, Shield, Truck, Award } from 'lucide-react';
-import ProductGrid from '../components/storefront/product/ProductGrid';
-
-// Get products from localStorage (shared with admin)
-const getProducts = () => {
-    try {
-        const items = JSON.parse(localStorage.getItem('vyapar_items') || '[]');
-        return items.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            price: item.salePrice,
-            originalPrice: item.salePrice * 1.2,
-            image: `https://images.unsplash.com/photo-${1550000000000 + Math.floor(Math.random() * 100000000)}?w=400`,
-            category: item.unit || 'General',
-            stock: item.stock,
-            rating: 4.5,
-            featured: true,
-            newArrival: item.stock > 50
-        }));
-    } catch {
-        return [];
-    }
-};
+import { inventoryService } from '../services/inventoryService';
+import ProductGrid from '../components/product/ProductGrid';
 
 const Home: React.FC = () => {
-    const [featuredProducts, setFeaturedProducts] = React.useState<any[]>([]);
-    const [newArrivals, setNewArrivals] = React.useState<any[]>([]);
-
-    React.useEffect(() => {
-        const products = getProducts();
-        setFeaturedProducts(products.slice(0, 8));
-        setNewArrivals(products.filter((p: any) => p.newArrival).slice(0, 4));
-    }, []);
+    const [featuredProducts, setFeaturedProducts] = React.useState(inventoryService.getFeaturedProducts().slice(0, 8));
+    const [newArrivals, setNewArrivals] = React.useState(
+        inventoryService.getProducts().filter(p => p.newArrival).slice(0, 4)
+    );
 
     return (
         <div className="min-h-screen">
@@ -113,24 +89,33 @@ const Home: React.FC = () => {
                         <h2 className="text-4xl md:text-5xl font-black mb-4">Featured Products</h2>
                         <p className="text-slate-500 text-lg">Handpicked items just for you</p>
                     </div>
-                    {featuredProducts.length > 0 ? (
-                        <ProductGrid products={featuredProducts} />
-                    ) : (
-                        <div className="text-center py-20 text-slate-400">
-                            <p className="text-lg">No products available yet.</p>
-                            <p className="text-sm mt-2">Visit the <a href="/admin" className="text-indigo-600 font-bold">Admin Dashboard</a> to add products.</p>
-                        </div>
-                    )}
+                    <ProductGrid products={featuredProducts} />
                     <div className="text-center mt-12">
-                        <a href="/products" className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-colors">
-                            View All Products <ArrowRight className="w-5 h-5" />
+                        <a href="/products?featured=true" className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-colors">
+                            View All Featured <ArrowRight className="w-5 h-5" />
                         </a>
                     </div>
                 </div>
             </section>
 
+            {/* New Arrivals */}
+            {newArrivals.length > 0 && (
+                <section className="py-20">
+                    <div className="container mx-auto px-4">
+                        <div className="text-center mb-12">
+                            <div className="inline-block px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-bold mb-4">
+                                NEW ARRIVALS
+                            </div>
+                            <h2 className="text-4xl md:text-5xl font-black mb-4">Just Landed</h2>
+                            <p className="text-slate-500 text-lg">Check out our latest additions</p>
+                        </div>
+                        <ProductGrid products={newArrivals} />
+                    </div>
+                </section>
+            )}
+
             {/* Categories */}
-            <section className="py-20 bg-white">
+            <section className="py-20 bg-slate-50">
                 <div className="container mx-auto px-4">
                     <div className="text-center mb-12">
                         <h2 className="text-4xl md:text-5xl font-black mb-4">Shop by Category</h2>
