@@ -1,0 +1,7 @@
+{
+  "name": "Vyapar Premium Inventory",
+  "description": "A comprehensive GST-compliant inventory management and billing system with real-time analytics, POS terminal, and financial reporting.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
