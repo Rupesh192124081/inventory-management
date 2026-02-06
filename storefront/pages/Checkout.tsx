@@ -1,14 +1,26 @@
-import React, { useState } from 'react';
-import { Check, CreditCard, Wallet, Banknote } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Check, CreditCard, Wallet, Banknote, AlertCircle } from 'lucide-react';
 import { useCart } from '../hooks/useCart';
 import { inventoryService } from '../services/inventoryService';
-import { Order, Address } from '../types/storefront';
+import { Order } from '../types/storefront';
+
+interface ValidationErrors {
+    name?: string;
+    email?: string;
+    phone?: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+}
 
 const Checkout: React.FC = () => {
     const { rawCart, total, clearCart } = useCart();
     const [step, setStep] = useState<'shipping' | 'payment' | 'review'>('shipping');
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [orderId, setOrderId] = useState('');
+    const [errors, setErrors] = useState<ValidationErrors>({});
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
 
     const [shippingInfo, setShippingInfo] = useState({
         name: '',
@@ -21,6 +33,97 @@ const Checkout: React.FC = () => {
     });
 
     const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi' | 'card'>('cod');
+
+    // Validation functions
+    const validateEmail = (email: string): boolean => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    };
+
+    const validatePhone = (phone: string): boolean => {
+        const phoneRegex = /^[6-9]\d{9}$/;
+        return phoneRegex.test(phone.replace(/\D/g, ''));
+    };
+
+    const validatePincode = (pincode: string): boolean => {
+        const pincodeRegex = /^\d{6}$/;
+        return pincodeRegex.test(pincode);
+    };
+
+    // Validate all fields
+    const validateForm = (): ValidationErrors => {
+        const newErrors: ValidationErrors = {};
+
+        if (!shippingInfo.name.trim()) {
+            newErrors.name = 'Full name is required';
+        } else if (shippingInfo.name.trim().length < 2) {
+            newErrors.name = 'Name must be at least 2 characters';
+        }
+
+        if (!shippingInfo.email.trim()) {
+            newErrors.email = 'Email is required';
+        } else if (!validateEmail(shippingInfo.email)) {
+            newErrors.email = 'Please enter a valid email address';
+        }
+
+        if (!shippingInfo.phone.trim()) {
+            newErrors.phone = 'Phone number is required';
+        } else if (!validatePhone(shippingInfo.phone)) {
+            newErrors.phone = 'Please enter a valid 10-digit phone number';
+        }
+
+        if (!shippingInfo.street.trim()) {
+            newErrors.street = 'Street address is required';
+        }
+
+        if (!shippingInfo.city.trim()) {
+            newErrors.city = 'City is required';
+        }
+
+        if (!shippingInfo.state.trim()) {
+            newErrors.state = 'State is required';
+        }
+
+        if (!shippingInfo.pincode.trim()) {
+            newErrors.pincode = 'Pincode is required';
+        } else if (!validatePincode(shippingInfo.pincode)) {
+            newErrors.pincode = 'Please enter a valid 6-digit pincode';
+        }
+
+        return newErrors;
+    };
+
+    // Check if form is valid
+    const isFormValid = useMemo(() => {
+        const formErrors = validateForm();
+        return Object.keys(formErrors).length === 0;
+    }, [shippingInfo]);
+
+    // Handle field blur for validation
+    const handleBlur = (field: string) => {
+        setTouched(prev => ({ ...prev, [field]: true }));
+        const formErrors = validateForm();
+        setErrors(formErrors);
+    };
+
+    // Handle continue to payment
+    const handleContinueToPayment = () => {
+        setTouched({
+            name: true,
+            email: true,
+            phone: true,
+            street: true,
+            city: true,
+            state: true,
+            pincode: true,
+        });
+        const formErrors = validateForm();
+        setErrors(formErrors);
+
+        if (Object.keys(formErrors).length === 0) {
+            setStep('payment');
+        }
+    };
 
     const handlePlaceOrder = () => {
         const newOrderId = `ORD${Date.now()}`;
@@ -133,6 +236,46 @@ const Checkout: React.FC = () => {
     const shipping = total > 500 ? 0 : 50;
     const grandTotal = subtotal + tax + shipping;
 
+    // Input field component with validation
+    const InputField = ({
+        name,
+        type = 'text',
+        placeholder,
+        value,
+        onChange,
+        className = '',
+        autoComplete = 'off'
+    }: {
+        name: keyof typeof shippingInfo;
+        type?: string;
+        placeholder: string;
+        value: string;
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+        className?: string;
+        autoComplete?: string;
+    }) => (
+        <div className={className}>
+            <input
+                type={type}
+                placeholder={placeholder}
+                value={value}
+                onChange={onChange}
+                onBlur={() => handleBlur(name)}
+                autoComplete={autoComplete}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none transition-colors ${touched[name] && errors[name]
+                        ? 'border-rose-500 focus:border-rose-500 bg-rose-50'
+                        : 'border-slate-200 focus:border-indigo-600'
+                    }`}
+            />
+            {touched[name] && errors[name] && (
+                <div className="flex items-center gap-1.5 mt-1.5 text-rose-600 text-xs font-medium">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{errors[name]}</span>
+                </div>
+            )}
+        </div>
+    );
+
     return (
         <div className="min-h-screen bg-slate-50 py-12">
             <div className="container mx-auto px-4 max-w-4xl">
@@ -169,67 +312,65 @@ const Checkout: React.FC = () => {
                     <div className="bg-white rounded-3xl p-8">
                         <h2 className="text-2xl font-black mb-6">Shipping Information</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <input
-                                type="text"
+                            <InputField
+                                name="name"
                                 placeholder="Full Name *"
                                 value={shippingInfo.name}
                                 onChange={(e) => setShippingInfo({ ...shippingInfo, name: e.target.value })}
-                                className="px-4 py-3 border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none"
-                                required
+                                autoComplete="name"
                             />
-                            <input
+                            <InputField
+                                name="email"
                                 type="email"
                                 placeholder="Email *"
                                 value={shippingInfo.email}
                                 onChange={(e) => setShippingInfo({ ...shippingInfo, email: e.target.value })}
-                                className="px-4 py-3 border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none"
-                                required
+                                autoComplete="email"
                             />
-                            <input
+                            <InputField
+                                name="phone"
                                 type="tel"
-                                placeholder="Phone *"
+                                placeholder="Phone (10 digits) *"
                                 value={shippingInfo.phone}
                                 onChange={(e) => setShippingInfo({ ...shippingInfo, phone: e.target.value })}
-                                className="px-4 py-3 border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none"
-                                required
+                                autoComplete="tel"
                             />
-                            <input
-                                type="text"
-                                placeholder="Pincode *"
+                            <InputField
+                                name="pincode"
+                                placeholder="Pincode (6 digits) *"
                                 value={shippingInfo.pincode}
                                 onChange={(e) => setShippingInfo({ ...shippingInfo, pincode: e.target.value })}
-                                className="px-4 py-3 border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none"
-                                required
+                                autoComplete="postal-code"
                             />
-                            <input
-                                type="text"
+                            <InputField
+                                name="street"
                                 placeholder="Street Address *"
                                 value={shippingInfo.street}
                                 onChange={(e) => setShippingInfo({ ...shippingInfo, street: e.target.value })}
-                                className="md:col-span-2 px-4 py-3 border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none"
-                                required
+                                className="md:col-span-2"
+                                autoComplete="street-address"
                             />
-                            <input
-                                type="text"
+                            <InputField
+                                name="city"
                                 placeholder="City *"
                                 value={shippingInfo.city}
                                 onChange={(e) => setShippingInfo({ ...shippingInfo, city: e.target.value })}
-                                className="px-4 py-3 border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none"
-                                required
+                                autoComplete="address-level2"
                             />
-                            <input
-                                type="text"
+                            <InputField
+                                name="state"
                                 placeholder="State *"
                                 value={shippingInfo.state}
                                 onChange={(e) => setShippingInfo({ ...shippingInfo, state: e.target.value })}
-                                className="px-4 py-3 border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none"
-                                required
+                                autoComplete="address-level1"
                             />
                         </div>
                         <button
-                            onClick={() => setStep('payment')}
-                            disabled={!shippingInfo.name || !shippingInfo.email || !shippingInfo.phone || !shippingInfo.street}
-                            className="w-full mt-6 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 disabled:bg-slate-300 transition-colors"
+                            onClick={handleContinueToPayment}
+                            className={`w-full mt-6 px-8 py-4 rounded-2xl font-bold transition-colors ${isFormValid
+                                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                }`}
                         >
                             Continue to Payment
                         </button>
@@ -287,18 +428,46 @@ const Checkout: React.FC = () => {
                                 </div>
                             </label>
                         </div>
-                        <button
-                            onClick={() => setStep('review')}
-                            className="w-full px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-colors"
-                        >
-                            Continue to Review
-                        </button>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setStep('shipping')}
+                                className="px-8 py-4 border-2 border-slate-200 rounded-2xl font-bold hover:bg-slate-50 transition-colors"
+                            >
+                                Back
+                            </button>
+                            <button
+                                onClick={() => setStep('review')}
+                                className="flex-1 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-colors"
+                            >
+                                Continue to Review
+                            </button>
+                        </div>
                     </div>
                 )}
 
                 {/* Review & Place Order */}
                 {step === 'review' && (
                     <div className="space-y-6">
+                        {/* Shipping Summary */}
+                        <div className="bg-white rounded-3xl p-8">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-2xl font-black">Shipping Address</h2>
+                                <button
+                                    onClick={() => setStep('shipping')}
+                                    className="text-indigo-600 font-bold text-sm hover:underline"
+                                >
+                                    Edit
+                                </button>
+                            </div>
+                            <div className="text-slate-600">
+                                <p className="font-bold text-slate-900">{shippingInfo.name}</p>
+                                <p>{shippingInfo.street}</p>
+                                <p>{shippingInfo.city}, {shippingInfo.state} - {shippingInfo.pincode}</p>
+                                <p className="mt-2">{shippingInfo.phone} | {shippingInfo.email}</p>
+                            </div>
+                        </div>
+
+                        {/* Order Summary */}
                         <div className="bg-white rounded-3xl p-8">
                             <h2 className="text-2xl font-black mb-6">Order Summary</h2>
                             <div className="space-y-4">
@@ -321,12 +490,20 @@ const Checkout: React.FC = () => {
                             </div>
                         </div>
 
-                        <button
-                            onClick={handlePlaceOrder}
-                            className="w-full px-8 py-4 bg-green-600 text-white rounded-2xl font-bold text-lg hover:bg-green-700 transition-colors"
-                        >
-                            Place Order
-                        </button>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setStep('payment')}
+                                className="px-8 py-4 border-2 border-slate-200 rounded-2xl font-bold hover:bg-slate-50 transition-colors"
+                            >
+                                Back
+                            </button>
+                            <button
+                                onClick={handlePlaceOrder}
+                                className="flex-1 px-8 py-4 bg-green-600 text-white rounded-2xl font-bold text-lg hover:bg-green-700 transition-colors"
+                            >
+                                Place Order
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

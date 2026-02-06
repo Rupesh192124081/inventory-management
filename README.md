@@ -1,1128 +1,879 @@
-# Vyapar Pro - Inventory Management & E-Commerce Platform
+# Distributor ERP System
 
-A comprehensive full-stack inventory management system integrated with an e-commerce storefront, featuring real-time data synchronization.
+A production-grade Enterprise Resource Planning system for distributors, built with React, TypeScript, and modern web technologies. Features a comprehensive admin dashboard for inventory, billing, GST compliance, and financial management, plus a customer-facing storefront with real-time stock synchronization.
 
-![Status](https://img.shields.io/badge/Status-Demo%20Ready-brightgreen)
-![React](https://img.shields.io/badge/React-19.0-blue)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
-![Firebase](https://img.shields.io/badge/Firebase-Ready-orange)
-
----
-
-## 📑 Table of Contents
-
-- [Overview](#-overview)
-- [System Architecture](#-system-architecture)
-- [How It Works](#-how-it-works)
-- [Quick Start (Demo)](#-quick-start-demo)
-- [Production Readiness Guide](#-production-readiness-guide)
-- [Firebase Integration](#-firebase-integration)
-- [Backend Architecture](#-backend-architecture)
-- [Deployment Guide](#-deployment-guide)
-- [API Documentation](#-api-documentation)
-- [Performance Optimization](#-performance-optimization)
+![React](https://img.shields.io/badge/React-19.0.0-61DAFB?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript)
+![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?logo=vite)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-06B6D4?logo=tailwindcss)
 
 ---
 
-## 🎯 Overview
+## Table of Contents
 
-### What is Vyapar Pro?
-
-Vyapar Pro is a complete business management solution that combines:
-
-1. **Admin Dashboard** - Full inventory management, billing, GST compliance, and reporting
-2. **E-Commerce Storefront** - Customer-facing online store with cart and checkout
-3. **Real-Time Sync** - Instant data synchronization between admin and storefront
-
-### Current Status: Demo Mode
-
-The current implementation uses `localStorage` for data persistence. This README provides a complete roadmap to make it **production-ready** with Firebase backend.
+1. [System Architecture](#system-architecture)
+2. [Tech Stack](#tech-stack)
+3. [Features Overview](#features-overview)
+4. [Business Logic Documentation](#business-logic-documentation)
+5. [Backend Architecture](#backend-architecture)
+6. [Design System Documentation](#design-system-documentation)
+7. [Implementation Guide](#implementation-guide)
+8. [API Reference](#api-reference)
+9. [Getting Started](#getting-started)
+10. [Deployment](#deployment)
 
 ---
 
-## 🏗 System Architecture
+## System Architecture
 
-### High-Level Architecture Diagram
+### High-Level Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DISTRIBUTOR ERP SYSTEM                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│   ┌─────────────────────────────┐    ┌─────────────────────────────┐        │
+│   │     ADMIN DASHBOARD         │    │    CUSTOMER STOREFRONT       │        │
+│   │     (Port 5175)             │    │    (Port 5173)               │        │
+│   │                             │    │                               │        │
+│   │  • Inventory Management     │    │  • Product Catalog           │        │
+│   │  • Billing & Invoicing      │    │  • Shopping Cart             │        │
+│   │  • Party/CRM Management     │    │  • Checkout with Stock Check │        │
+│   │  • GST Compliance           │    │  • Order Confirmation        │        │
+│   │  • Financial Reports        │    │  • WhatsApp Invoice Sharing  │        │
+│   │  • Payment Reconciliation   │    │                               │        │
+│   └──────────────┬──────────────┘    └──────────────┬────────────────┘        │
+│                  │                                   │                        │
+│                  └───────────────┬───────────────────┘                        │
+│                                  │                                            │
+│                  ┌───────────────▼───────────────┐                            │
+│                  │      SHARED SERVICE LAYER      │                            │
+│                  │                                │                            │
+│                  │  • inventoryService.ts        │                            │
+│                  │  • billingService.ts          │                            │
+│                  │  • gstService.ts              │                            │
+│                  │  • paymentService.ts          │                            │
+│                  │  • storefrontSyncService.ts   │                            │
+│                  └───────────────┬───────────────┘                            │
+│                                  │                                            │
+│                  ┌───────────────▼───────────────┐                            │
+│                  │      LOCAL STORAGE LAYER       │                            │
+│                  │                                │                            │
+│                  │  • vyapar_items                │                            │
+│                  │  • vyapar_parties              │                            │
+│                  │  • vyapar_invoices             │                            │
+│                  │  • vyapar_payments             │                            │
+│                  │  • stock_ledger                │                            │
+│                  └────────────────────────────────┘                            │
+│                                                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Component Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              FRONTEND LAYER                                  │
-├─────────────────────────────────┬───────────────────────────────────────────┤
-│        E-Commerce Storefront    │           Admin Dashboard                 │
-│  ┌───────────────────────────┐  │  ┌─────────────────────────────────────┐  │
-│  │  • Home Page              │  │  │  • Dashboard (Analytics)            │  │
-│  │  • Product Catalog        │  │  │  • Inventory Management             │  │
-│  │  • Product Details        │  │  │  • Billing / POS                    │  │
-│  │  • Shopping Cart          │  │  │  • Parties (Customers/Suppliers)    │  │
-│  │  • Checkout               │  │  │  • Reports                          │  │
-│  │  • User Account           │  │  │  • GST Compliance                   │  │
-│  └───────────────────────────┘  │  │  • Invoice History                  │  │
-│                                 │  │  • Settings                         │  │
-│                                 │  └─────────────────────────────────────┘  │
-└─────────────────────────────────┴───────────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           STATE MANAGEMENT LAYER                             │
-│  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │                     React Context + Custom Hooks                        ││
-│  │  • useProducts()  • useCart()  • useAuth()  • useOrders()              ││
-│  └─────────────────────────────────────────────────────────────────────────┘│
+│                              ADMIN DASHBOARD                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│   │  Inventory  │  │   Billing   │  │   Parties   │  │  GST Comp   │        │
+│   │   .tsx      │  │    .tsx     │  │    .tsx     │  │    .tsx     │        │
+│   │             │  │             │  │             │  │             │        │
+│   │ • SKU Mgmt  │  │ • Sale Inv  │  │ • Customer  │  │ • GSTR-1    │        │
+│   │ • Batches   │  │ • Purchase  │  │ • Vendor    │  │ • GSTR-3B   │        │
+│   │ • Valuation │  │ • Returns   │  │ • Credit    │  │ • E-Invoice │        │
+│   │ • Variants  │  │ • Partial   │  │ • Ledger    │  │ • HSN Summ  │        │
+│   └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │
+│                                                                               │
+│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│   │   Reports   │  │ Stock Ledge │  │ Purchase    │  │ Payment     │        │
+│   │    .tsx     │  │    r.tsx    │  │ Invoice.tsx │  │ Recon.tsx   │        │
+│   │             │  │             │  │             │  │             │        │
+│   │ • P&L Stmt  │  │ • Audit     │  │ • Supplier  │  │ • Aging     │        │
+│   │ • Stock Age │  │ • Movement  │  │ • Stock IN  │  │ • Receivable│        │
+│   │ • Analytics │  │ • CSV Export│  │ • GST Calc  │  │ • Payables  │        │
+│   └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │
+│                                                                               │
 └─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              SERVICE LAYER                                   │
-│  ┌────────────────────┐  ┌────────────────────┐  ┌────────────────────────┐ │
-│  │  inventoryService  │  │    authService     │  │     orderService       │ │
-│  │  • getProducts()   │  │  • signIn()        │  │  • createOrder()       │ │
-│  │  • updateStock()   │  │  • signUp()        │  │  • getOrders()         │ │
-│  │  • addProduct()    │  │  • signOut()       │  │  • updateStatus()      │ │
-│  └────────────────────┘  └────────────────────┘  └────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                         ┌────────────┴────────────┐
-                         ▼                         ▼
-┌──────────────────────────────────┐  ┌───────────────────────────────────────┐
-│     DEMO MODE (Current)          │  │     PRODUCTION MODE (Firebase)        │
-│  ┌────────────────────────────┐  │  │  ┌─────────────────────────────────┐  │
-│  │     localStorage           │  │  │  │      Firebase Services          │  │
-│  │  • vyapar_items           │  │  │  │  ┌─────────────────────────────┐ │  │
-│  │  • vyapar_orders          │  │  │  │  │  Firebase Authentication   │ │  │
-│  │  • vyapar_parties         │  │  │  │  │  • Email/Password          │ │  │
-│  │  • vyapar_invoices        │  │  │  │  │  • Google OAuth            │ │  │
-│  │  • vyapar_profile         │  │  │  │  │  • Phone Auth              │ │  │
-│  └────────────────────────────┘  │  │  │  └─────────────────────────────┘ │  │
-└──────────────────────────────────┘  │  │  ┌─────────────────────────────┐ │  │
-                                      │  │  │  Cloud Firestore           │ │  │
-                                      │  │  │  • Products Collection     │ │  │
-                                      │  │  │  • Orders Collection       │ │  │
-                                      │  │  │  • Users Collection        │ │  │
-                                      │  │  └─────────────────────────────┘ │  │
-                                      │  │  ┌─────────────────────────────┐ │  │
-                                      │  │  │  Firebase Storage          │ │  │
-                                      │  │  │  • Product Images          │ │  │
-                                      │  │  │  • Invoice PDFs            │ │  │
-                                      │  │  └─────────────────────────────┘ │  │
-                                      │  └─────────────────────────────────┘  │
-                                      └───────────────────────────────────────┘
 ```
 
-### Data Flow Algorithm
+### Data Flow Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                        REAL-TIME SYNC ALGORITHM                              │
-└──────────────────────────────────────────────────────────────────────────────┘
-
-STEP 1: Data Write Operation
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  User Action (Admin)          │  User Action (Storefront)                   │
-│  • Add/Update Product         │  • Add to Cart                              │
-│  • Create Invoice             │  • Place Order                              │
-│          │                    │          │                                  │
-│          ▼                    │          ▼                                  │
-│  ┌─────────────┐              │  ┌─────────────┐                            │
-│  │ setState()  │              │  │ setState()  │                            │
-│  └──────┬──────┘              │  └──────┬──────┘                            │
-│         │                     │         │                                   │
-│         ▼                     │         ▼                                   │
-│  ┌──────────────────────┐     │  ┌──────────────────────┐                   │
-│  │ useEffect() trigger  │     │  │ useEffect() trigger  │                   │
-│  │ (if isInitialized)   │     │  │ (update localStorage)│                   │
-│  └──────────┬───────────┘     │  └──────────┬───────────┘                   │
-│             │                 │             │                               │
-│             ▼                 │             ▼                               │
-│  ┌──────────────────────────────────────────────────────────┐               │
-│  │           localStorage.setItem('vyapar_items', data)     │               │
-│  └──────────────────────────────────────────────────────────┘               │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-STEP 2: Data Read Operation (On Page Load)
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  Component Mount                                                            │
-│         │                                                                   │
-│         ▼                                                                   │
-│  ┌──────────────────────────────────────────────────────────┐               │
-│  │  Check: localStorage.getItem('vyapar_items') === null?   │               │
-│  └──────────────────────┬───────────────────────────────────┘               │
-│                         │                                                   │
-│            ┌────────────┴────────────┐                                      │
-│            ▼                         ▼                                      │
-│    ┌───────────────┐         ┌───────────────┐                              │
-│    │    YES        │         │     NO        │                              │
-│    │ Seed Demo Data│         │ Load Existing │                              │
-│    └───────┬───────┘         └───────┬───────┘                              │
-│            │                         │                                      │
-│            ▼                         ▼                                      │
-│    ┌────────────────────────────────────────────────┐                       │
-│    │         setItems(parsedData)                   │                       │
-│    │         setIsInitialized(true)                 │                       │
-│    └────────────────────────────────────────────────┘                       │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-STEP 3: Cross-Tab Synchronization (Production with Firebase)
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│  ┌────────────────┐     ┌─────────────────────┐     ┌──────────────────┐   │
-│  │ Tab 1 (Admin)  │     │  Firebase Firestore │     │ Tab 2 (Store)    │   │
-│  │                │     │                     │     │                  │   │
-│  │ updateProduct()│────▶│  products/{id}      │────▶│ onSnapshot()     │   │
-│  │                │     │  (Real-time sync)   │     │ triggers UI      │   │
-│  └────────────────┘     │                     │     │ update           │   │
-│                         │  ┌───────────────┐  │     └──────────────────┘   │
-│                         │  │ Indexed Queries│  │                            │
-│                         │  │ • by category  │  │                            │
-│                         │  │ • by stock     │  │                            │
-│                         │  │ • by date      │  │                            │
-│                         │  └───────────────┘  │                            │
-│                         └─────────────────────┘                            │
+│                              DATA FLOW                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│   USER ACTION                                                                 │
+│       │                                                                       │
+│       ▼                                                                       │
+│   ┌─────────────────┐                                                        │
+│   │  React Component │ ───────────────────────────────────────┐              │
+│   └────────┬────────┘                                         │              │
+│            │                                                  │              │
+│            ▼                                                  │              │
+│   ┌─────────────────┐     ┌─────────────────┐                │              │
+│   │  Service Layer  │────▶│ Business Logic  │                │              │
+│   │                 │     │                 │                │              │
+│   │ • Validation    │     │ • Stock Check   │                │              │
+│   │ • Calculation   │     │ • Credit Check  │                │              │
+│   │ • Formatting    │     │ • GST Calc      │                │              │
+│   └────────┬────────┘     └─────────────────┘                │              │
+│            │                                                  │              │
+│            ▼                                                  │              │
+│   ┌─────────────────┐                                        │              │
+│   │  localStorage   │ ◀───────────────────────────────────────┘              │
+│   │                 │                                                        │
+│   │  Persist Data   │                                                        │
+│   └─────────────────┘                                                        │
+│                                                                               │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## ⚙️ How It Works
+## Tech Stack
 
-### Demo Mode (Current Implementation)
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| **Frontend** | React 19 | UI Framework with latest concurrent features |
+| **Language** | TypeScript 5.6 | Type safety and better DX |
+| **Build** | Vite 6.0 | Fast HMR and optimized builds |
+| **Styling** | Tailwind CSS 3.4 | Utility-first styling |
+| **Icons** | Lucide React | Beautiful, consistent iconography |
+| **State** | React useState/useMemo | Local component state |
+| **Storage** | localStorage | Client-side persistence |
+| **Routing** | React Router 7 | SPA navigation |
+
+---
+
+## Features Overview
+
+### Admin Dashboard Features
+
+| Feature | Description |
+|---------|-------------|
+| **Inventory Management** | SKU management, batch tracking, variant support, stock valuation (FIFO/Weighted Avg), opening stock entry, low stock alerts |
+| **Billing System** | Sale/Purchase invoices, credit limit enforcement, partial payments, return invoices, loyalty points, barcode scanning |
+| **Party Management** | Customer/Vendor CRM, credit limit settings, credit days, outstanding alerts, WhatsApp reminders, ledger statements |
+| **GST Compliance** | CGST/SGST/IGST auto-calculation, GSTR-1 export, GSTR-3B summary, E-Invoice structure, HSN-wise summaries |
+| **Reports** | Profit & Loss statement, Stock aging report, Vendor/Customer analytics, CSV export |
+| **Payment Reconciliation** | Receivables/Payables tracking, Aging analysis (0-30, 31-60, 61-90, 90+ days), Payment history |
+| **Stock Ledger** | Complete audit trail, Movement history, Reference tracking, CSV export |
+
+### Storefront Features
+
+| Feature | Description |
+|---------|-------------|
+| **Product Catalog** | Category-wise browsing, Search, Stock indicators |
+| **Real-time Stock** | Live stock checking from admin inventory |
+| **Shopping Cart** | Stock validation, Quantity limits |
+| **Checkout** | Stock reservation, Atomic deduction |
+| **Order Confirmation** | WhatsApp invoice sharing |
+
+---
+
+## Business Logic Documentation
+
+### 1. Inventory Service (`services/inventoryService.ts`)
+
+The inventory service handles all stock-related operations with atomic transactions and complete audit trails.
+
+#### Core Operations
 
 ```typescript
-// 1. Data Seeding (demoData.ts)
-export const seedDemoData = () => {
-  const alreadySeeded = localStorage.getItem('demo_data_seeded');
-  
-  // Save to localStorage
-  localStorage.setItem('vyapar_items', JSON.stringify(demoProducts));
-  localStorage.setItem('demo_data_seeded', 'true');
-};
+// Stock Addition (Purchase/Opening Stock)
+addStock(itemId: string, quantity: number, purchasePrice: number, referenceId: string, batchNumber?: string): StockResult
 
-// 2. Data Loading with Protection (AdminDashboard.tsx)
-const [isInitialized, setIsInitialized] = useState(false);
+// Stock Deduction (Sale)
+deductStock(itemId: string, quantity: number, referenceId: string): StockResult
 
-useEffect(() => {
-  const savedItems = localStorage.getItem('vyapar_items');
-  if (savedItems) setItems(JSON.parse(savedItems));
-  setIsInitialized(true); // Prevents overwriting on mount
-}, []);
-
-// 3. Data Saving (only after initialization)
-useEffect(() => {
-  if (isInitialized) {
-    localStorage.setItem('vyapar_items', JSON.stringify(items));
-  }
-}, [items, isInitialized]);
+// Stock Adjustment (Manual correction)
+adjustStock(itemId: string, newQuantity: number, reason: string, referenceId: string): StockResult
 ```
 
-### Storage Keys Reference
+#### Negative Stock Prevention
 
-| Key | Description | Used By |
-|-----|-------------|---------|
-| `vyapar_items` | Product inventory | Admin + Storefront |
-| `vyapar_orders` | Order history | Admin + Storefront |
-| `vyapar_parties` | Customers & Suppliers | Admin |
-| `vyapar_invoices` | Invoice records | Admin |
-| `vyapar_expenses` | Business expenses | Admin |
-| `vyapar_profile` | Business settings | Admin |
-| `vyapar_cart_{id}` | User cart | Storefront |
-| `demo_data_seeded` | Seeding flag | System |
+```typescript
+function deductStock(itemId: string, quantity: number, referenceId: string): StockResult {
+    const item = getItemById(itemId);
+    
+    // HARD BLOCK: Never allow negative stock
+    if (item.stock < quantity) {
+        return {
+            success: false,
+            error: `Insufficient stock. Available: ${item.stock}, Requested: ${quantity}`
+        };
+    }
+    
+    // Atomic deduction with ledger entry
+    item.stock -= quantity;
+    recordLedgerEntry({
+        itemId,
+        type: 'out',
+        quantity,
+        referenceId,
+        date: new Date().toISOString(),
+        runningBalance: item.stock
+    });
+    
+    return { success: true, newStock: item.stock };
+}
+```
+
+#### Stock Valuation
+
+```typescript
+function getStockValuation(): StockValuation {
+    const items = getAllItems();
+    
+    return {
+        totalItems: items.length,
+        totalQuantity: items.reduce((sum, i) => sum + i.stock, 0),
+        totalValue: items.reduce((sum, i) => sum + (i.stock * i.purchasePrice), 0),
+        valuationMethod: 'Weighted Average Cost'
+    };
+}
+```
+
+### 2. Billing Service (`services/billingService.ts`)
+
+Handles invoice creation with integrated stock and payment management.
+
+#### Credit Limit Validation
+
+```typescript
+function validateCreditLimit(partyId: string, amount: number): CreditValidation {
+    const party = getPartyById(partyId);
+    const creditLimit = party.creditLimit || 0;
+    const currentBalance = party.balance || 0;
+    
+    const availableCredit = creditLimit - currentBalance;
+    
+    if (amount > availableCredit) {
+        return {
+            allowed: false,
+            message: `Credit limit exceeded. Available: ₹${availableCredit.toLocaleString()}, Requested: ₹${amount.toLocaleString()}`,
+            currentBalance,
+            creditLimit
+        };
+    }
+    
+    return { allowed: true, currentBalance, creditLimit };
+}
+```
+
+#### Invoice Creation Flow
+
+```typescript
+function createSaleInvoice(params: CreateSaleInvoiceParams): InvoiceResult {
+    // 1. Validate stock availability
+    for (const item of params.items) {
+        const stockCheck = inventoryService.validateStockAvailability(item.itemId, item.quantity);
+        if (!stockCheck.available) {
+            return { success: false, error: stockCheck.message };
+        }
+    }
+    
+    // 2. Validate credit limit (if credit sale)
+    if (params.paymentMode !== 'cash') {
+        const creditCheck = validateCreditLimit(params.partyId, params.totalAmount - params.paidAmount);
+        if (!creditCheck.allowed) {
+            return { success: false, error: creditCheck.message };
+        }
+    }
+    
+    // 3. Generate invoice number
+    const invoiceNumber = generateInvoiceNumber('INV');
+    
+    // 4. Deduct stock atomically
+    for (const item of params.items) {
+        inventoryService.deductStock(item.itemId, item.quantity, invoiceNumber);
+    }
+    
+    // 5. Update party balance
+    updatePartyBalance(params.partyId, params.totalAmount - params.paidAmount);
+    
+    // 6. Calculate loyalty points
+    const pointsEarned = Math.floor(params.totalAmount * 0.01);
+    
+    // 7. Create and save invoice
+    const invoice = createInvoiceRecord({...params, invoiceNumber, pointsEarned});
+    saveInvoice(invoice);
+    
+    return { success: true, invoice };
+}
+```
+
+### 3. GST Service (`services/gstService.ts`)
+
+Complete GST compliance including tax calculation and return preparation.
+
+#### Tax Calculation
+
+```typescript
+function calculateGST(amount: number, gstRate: number, isSameState: boolean): GSTBreakdown {
+    const taxableAmount = amount / (1 + gstRate / 100);
+    const totalTax = amount - taxableAmount;
+    
+    if (isSameState) {
+        // Intra-state: Split into CGST + SGST
+        return {
+            taxableAmount,
+            cgst: totalTax / 2,
+            sgst: totalTax / 2,
+            igst: 0,
+            totalTax
+        };
+    } else {
+        // Inter-state: Full IGST
+        return {
+            taxableAmount,
+            cgst: 0,
+            sgst: 0,
+            igst: totalTax,
+            totalTax
+        };
+    }
+}
+```
+
+#### GSTR-1 Preparation
+
+```typescript
+function prepareGstr1(month: number, year: number): Gstr1Return {
+    const invoices = getInvoicesForPeriod(month, year);
+    
+    // B2B Invoices (Business to Business - GST registered)
+    const b2b = invoices
+        .filter(inv => inv.partyGstin && inv.totalAmount > 0)
+        .map(inv => ({
+            ctin: inv.partyGstin,
+            invNumber: inv.id,
+            invDate: inv.date,
+            invValue: inv.totalAmount,
+            taxableValue: inv.subTotal,
+            cgst: inv.cgst,
+            sgst: inv.sgst,
+            igst: inv.igst
+        }));
+    
+    // HSN Summary
+    const hsn = groupByHSN(invoices);
+    
+    return { b2b, hsn, period: `${month}/${year}` };
+}
+```
+
+### 4. Payment Service (`services/paymentService.ts`)
+
+Manages payment recording, allocation, and outstanding tracking.
+
+#### Payment Allocation
+
+```typescript
+function recordPaymentIn(params: PaymentInParams): PaymentResult {
+    const payment: PaymentRecord = {
+        id: generatePaymentId(),
+        partyId: params.partyId,
+        amount: params.amount,
+        date: params.date,
+        mode: params.mode,
+        type: 'in',
+        allocations: []
+    };
+    
+    // Auto-allocate to oldest unpaid invoices (FIFO)
+    let remainingAmount = params.amount;
+    const unpaidInvoices = getUnpaidInvoices(params.partyId);
+    
+    for (const invoice of unpaidInvoices) {
+        if (remainingAmount <= 0) break;
+        
+        const dueAmount = invoice.totalAmount - invoice.paidAmount;
+        const allocatedAmount = Math.min(remainingAmount, dueAmount);
+        
+        payment.allocations.push({
+            invoiceId: invoice.id,
+            allocatedAmount
+        });
+        
+        remainingAmount -= allocatedAmount;
+    }
+    
+    savePayment(payment);
+    updatePartyBalance(params.partyId, -params.amount);
+    
+    return { success: true, payment };
+}
+```
+
+#### Aging Analysis
+
+```typescript
+function getAgingSummary(partyId?: string): AgingSummary {
+    const receivables = getOutstandingReceivables(partyId);
+    const today = new Date();
+    
+    const buckets = {
+        current: 0,      // 0-30 days
+        days31_60: 0,    // 31-60 days
+        days61_90: 0,    // 61-90 days
+        over90: 0        // 90+ days
+    };
+    
+    for (const entry of receivables) {
+        const daysSince = Math.floor((today - new Date(entry.invoiceDate)) / (1000 * 60 * 60 * 24));
+        
+        if (daysSince <= 30) buckets.current += entry.outstanding;
+        else if (daysSince <= 60) buckets.days31_60 += entry.outstanding;
+        else if (daysSince <= 90) buckets.days61_90 += entry.outstanding;
+        else buckets.over90 += entry.outstanding;
+    }
+    
+    return buckets;
+}
+```
 
 ---
 
-## 🚀 Quick Start (Demo)
+## Backend Architecture
 
-### Prerequisites
+### Data Storage Schema
 
-```bash
-Node.js 18+
-npm 9+
+The system uses localStorage with the following key structure:
+
+```
+localStorage
+├── vyapar_items          → Item[] (Inventory items with variants)
+├── vyapar_parties        → Party[] (Customers and vendors)
+├── vyapar_invoices       → Invoice[] (All sale/purchase/return invoices)
+├── vyapar_payments       → PaymentRecord[] (All payment transactions)
+├── vyapar_expenses       → Expense[] (Business expenses)
+├── vyapar_profile        → BusinessProfile (Company settings)
+├── stock_ledger          → StockLedgerEntry[] (Audit trail)
+├── payment_allocations   → PaymentAllocation[] (Invoice-payment mapping)
+└── storefront_orders     → StorefrontOrder[] (Online orders)
 ```
 
-### Installation
+### Type Definitions
+
+```typescript
+// Core Item Type
+interface Item {
+    id: string;
+    name: string;
+    hsnCode: string;
+    purchasePrice: number;
+    salePrice: number;
+    stock: number;
+    minStock: number;
+    unit: string;
+    gstRate: number;
+    variants?: ItemVariant[];
+    batches?: Batch[];
+}
+
+// Party with Credit Settings
+interface Party {
+    id: string;
+    name: string;
+    phone: string;
+    type: 'customer' | 'vendor' | 'both';
+    gstin?: string;
+    balance: number;
+    loyaltyPoints: number;
+    creditLimit?: number;
+    creditDays?: number;
+}
+
+// Invoice with Payment Status
+interface Invoice {
+    id: string;
+    partyId: string;
+    date: string;
+    type: 'sale' | 'purchase' | 'return';
+    items: InvoiceItem[];
+    subTotal: number;
+    discountTotal: number;
+    totalAmount: number;
+    taxAmount: number;
+    paymentMode: 'cash' | 'credit' | 'partial';
+    paidAmount: number;
+    status: 'paid' | 'unpaid' | 'partial';
+    pointsEarned?: number;
+}
+
+// Stock Ledger Entry
+interface StockLedgerEntry {
+    id: string;
+    itemId: string;
+    type: 'in' | 'out' | 'adjustment';
+    quantity: number;
+    referenceId: string;
+    referenceType: string;
+    date: string;
+    runningBalance: number;
+    note?: string;
+}
+```
+
+### Transaction Handling
+
+All critical operations follow ACID-like principles:
+
+```typescript
+// Atomic Transaction Pattern
+function performTransaction<T>(operation: () => T): TransactionResult<T> {
+    // 1. Create snapshot of current state
+    const snapshot = createStateSnapshot();
+    
+    try {
+        // 2. Perform operation
+        const result = operation();
+        
+        // 3. Persist changes
+        persistState();
+        
+        return { success: true, data: result };
+        
+    } catch (error) {
+        // 4. Rollback on failure
+        restoreSnapshot(snapshot);
+        
+        return { success: false, error: error.message };
+    }
+}
+```
+
+---
+
+## Design System Documentation
+
+### Color Palette
+
+```css
+/* Primary Colors */
+--indigo-600: #4F46E5;   /* Primary actions, links */
+--indigo-700: #4338CA;   /* Primary hover states */
+--indigo-50:  #EEF2FF;   /* Primary backgrounds */
+
+/* Semantic Colors */
+--emerald-600: #059669;  /* Success, positive values */
+--rose-600:    #E11D48;  /* Danger, negative values */
+--amber-500:   #F59E0B;  /* Warning, pending states */
+--purple-600:  #9333EA;  /* Secondary accent */
+
+/* Neutral Colors */
+--slate-900: #0F172A;    /* Primary text */
+--slate-700: #334155;    /* Secondary text */
+--slate-400: #94A3B8;    /* Muted text */
+--slate-100: #F1F5F9;    /* Borders, dividers */
+--slate-50:  #F8FAFC;    /* Subtle backgrounds */
+```
+
+### Component Styles
+
+```css
+/* Card Component */
+.card {
+    @apply bg-white rounded-[2rem] border border-slate-200 
+           shadow-sm hover:shadow-xl transition-all;
+}
+
+/* Button Primary */
+.btn-primary {
+    @apply px-6 py-3 bg-indigo-600 text-white rounded-2xl 
+           font-black text-sm shadow-xl shadow-indigo-100
+           hover:bg-indigo-700 transition-all;
+}
+
+/* Input Field */
+.input {
+    @apply w-full px-6 py-4 bg-slate-50 border border-slate-200 
+           rounded-2xl outline-none font-bold
+           focus:ring-4 focus:ring-indigo-500/10;
+}
+
+/* Badge */
+.badge {
+    @apply px-3 py-1 rounded-xl text-[10px] font-black 
+           uppercase tracking-tighter;
+}
+```
+
+### Typography Scale
+
+```css
+/* Headings */
+.heading-1 { @apply text-3xl font-black tracking-tight; }
+.heading-2 { @apply text-2xl font-black; }
+.heading-3 { @apply text-xl font-black; }
+
+/* Body */
+.body-lg   { @apply text-lg font-bold; }
+.body      { @apply text-sm font-medium; }
+.body-sm   { @apply text-xs font-bold; }
+
+/* Labels */
+.label     { @apply text-[10px] font-black uppercase tracking-widest text-slate-400; }
+```
+
+### Spacing System
+
+```
+Spacing Scale (Tailwind defaults):
+1   = 0.25rem  (4px)
+2   = 0.5rem   (8px)
+3   = 0.75rem  (12px)
+4   = 1rem     (16px)
+6   = 1.5rem   (24px)
+8   = 2rem     (32px)
+10  = 2.5rem   (40px)
+12  = 3rem     (48px)
+```
+
+### Border Radius Tokens
+
+```
+rounded-lg    = 0.5rem   (8px)   - Small elements
+rounded-xl    = 0.75rem  (12px)  - Medium elements
+rounded-2xl   = 1rem     (16px)  - Buttons, inputs
+rounded-3xl   = 1.5rem   (24px)  - Cards
+rounded-[2rem]= 2rem     (32px)  - Large cards
+rounded-full  = 9999px            - Circles
+```
+
+---
+
+## Implementation Guide
+
+### Setting Up the Project
 
 ```bash
-# Clone repository
+# Clone the repository
 git clone https://github.com/Rupesh192124081/inventory-management.git
+
+# Navigate to project
 cd inventory-management
 
 # Install dependencies
 npm install
-cd storefront && npm install
+
+# Start admin dashboard (port 5175)
+npm run dev -- --port 5175
+
+# In another terminal, start storefront (port 5173)
+cd storefront && npm install && npm run dev
 ```
 
-### Running the Demo
+### Seeding Demo Data
 
-```bash
-# Start storefront (port 5174)
-cd storefront && npm run dev
-```
-
-### Demo Credentials
-
-```
-URL: http://localhost:5174/admin/login
-Username: admin
-Password: demo123
-```
-
----
-
-## 🏭 Production Readiness Guide
-
-### Step-by-Step Transition Checklist
-
-```
-Phase 1: Firebase Setup
-├── [ ] Create Firebase Project
-├── [ ] Enable Authentication (Email, Google, Phone)
-├── [ ] Create Firestore Database
-├── [ ] Set up Storage Bucket
-├── [ ] Configure Security Rules
-└── [ ] Generate Web SDK Config
-
-Phase 2: Code Integration
-├── [ ] Install Firebase SDK
-├── [ ] Create firebase.config.ts
-├── [ ] Replace localStorage services with Firebase
-├── [ ] Implement AuthContext
-├── [ ] Add Firestore hooks
-└── [ ] Configure image uploads
-
-Phase 3: Security & Performance
-├── [ ] Implement Row-Level Security
-├── [ ] Add Firestore indexes
-├── [ ] Enable offline persistence
-├── [ ] Add error boundaries
-└── [ ] Implement rate limiting
-
-Phase 4: Deployment
-├── [ ] Build production bundle
-├── [ ] Deploy to Firebase Hosting
-├── [ ] Configure custom domain
-├── [ ] Set up CI/CD
-└── [ ] Enable monitoring
-```
-
----
-
-## 🔐 Firebase Integration
-
-### Step 1: Create Firebase Project
-
-1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Click "Add Project" → Enter "vyapar-pro"
-3. Enable Google Analytics (optional)
-4. Wait for project creation
-
-### Step 2: Install Firebase SDK
-
-```bash
-cd storefront
-npm install firebase
-```
-
-### Step 3: Create Firebase Configuration
-
-Create `storefront/config/firebase.ts`:
+The system includes demo data generation. To initialize:
 
 ```typescript
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+// In browser console or initialization script
+import { initializeDemoData } from './services/demoData';
 
-const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY,
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.VITE_FIREBASE_APP_ID,
-};
+initializeDemoData();
+// This creates sample items, parties, invoices, and payments
+```
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+### Using the Services
 
-// Initialize services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+```typescript
+// Import services
+import { inventoryService, billingService, gstService, paymentService } from './services';
 
-// Enable offline persistence
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    console.warn('Persistence failed: Multiple tabs open');
-  } else if (err.code === 'unimplemented') {
-    console.warn('Persistence not supported');
-  }
+// Check stock availability
+const stockCheck = inventoryService.validateStockAvailability('item-123', 10);
+if (!stockCheck.available) {
+    console.error(stockCheck.message);
+}
+
+// Create a sale invoice
+const result = billingService.createSaleInvoice({
+    partyId: 'customer-1',
+    items: [...],
+    paymentMode: 'partial',
+    paidAmount: 5000,
+    totalAmount: 10000
 });
 
-export default app;
-```
+// Calculate GST
+const gst = gstService.calculateGST(1000, 18, true);
+// { taxableAmount: 847.46, cgst: 76.27, sgst: 76.27, igst: 0 }
 
-### Step 4: Create Environment Variables
-
-Create `.env.local`:
-
-```env
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
-VITE_FIREBASE_APP_ID=1:123456789:web:abcdef
-```
-
-### Step 5: Create Authentication Service
-
-Create `storefront/services/authService.ts`:
-
-```typescript
-import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  GoogleAuthProvider,
-  signInWithPopup,
-  onAuthStateChanged,
-  User,
-} from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../config/firebase';
-
-export const authService = {
-  // Sign in with email/password
-  async signIn(email: string, password: string): Promise<User> {
-    const result = await signInWithEmailAndPassword(auth, email, password);
-    return result.user;
-  },
-
-  // Sign up with email/password
-  async signUp(email: string, password: string, userData: object): Promise<User> {
-    const result = await createUserWithEmailAndPassword(auth, email, password);
-    
-    // Create user profile in Firestore
-    await setDoc(doc(db, 'users', result.user.uid), {
-      email,
-      ...userData,
-      role: 'customer', // Default role
-      createdAt: new Date().toISOString(),
-    });
-    
-    return result.user;
-  },
-
-  // Sign in with Google
-  async signInWithGoogle(): Promise<User> {
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    
-    // Check if user exists, create profile if not
-    const userDoc = await getDoc(doc(db, 'users', result.user.uid));
-    if (!userDoc.exists()) {
-      await setDoc(doc(db, 'users', result.user.uid), {
-        email: result.user.email,
-        name: result.user.displayName,
-        role: 'customer',
-        createdAt: new Date().toISOString(),
-      });
-    }
-    
-    return result.user;
-  },
-
-  // Sign out
-  async signOut(): Promise<void> {
-    await signOut(auth);
-  },
-
-  // Auth state observer
-  onAuthStateChanged(callback: (user: User | null) => void) {
-    return onAuthStateChanged(auth, callback);
-  },
-
-  // Get current user
-  getCurrentUser(): User | null {
-    return auth.currentUser;
-  },
-
-  // Check if user is admin
-  async isAdmin(userId: string): Promise<boolean> {
-    const userDoc = await getDoc(doc(db, 'users', userId));
-    return userDoc.data()?.role === 'admin';
-  },
-};
-```
-
-### Step 6: Create Firestore Database Service
-
-Create `storefront/services/firestoreService.ts`:
-
-```typescript
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  onSnapshot,
-  Timestamp,
-  writeBatch,
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
-
-// Collection references
-const COLLECTIONS = {
-  products: 'products',
-  orders: 'orders',
-  users: 'users',
-  invoices: 'invoices',
-  parties: 'parties',
-};
-
-export const firestoreService = {
-  // ============== PRODUCTS ==============
-  
-  // Get all products
-  async getProducts(): Promise<Product[]> {
-    const snapshot = await getDocs(collection(db, COLLECTIONS.products));
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-  },
-
-  // Get products by category (with index)
-  async getProductsByCategory(category: string): Promise<Product[]> {
-    const q = query(
-      collection(db, COLLECTIONS.products),
-      where('category', '==', category),
-      where('stock', '>', 0),
-      orderBy('stock', 'desc')
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-  },
-
-  // Get featured products (optimized query)
-  async getFeaturedProducts(limitCount: number = 8): Promise<Product[]> {
-    const q = query(
-      collection(db, COLLECTIONS.products),
-      where('featured', '==', true),
-      where('stock', '>', 0),
-      limit(limitCount)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-  },
-
-  // Add product
-  async addProduct(product: Omit<Product, 'id'>): Promise<string> {
-    const docRef = await addDoc(collection(db, COLLECTIONS.products), {
-      ...product,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-    return docRef.id;
-  },
-
-  // Update product
-  async updateProduct(id: string, updates: Partial<Product>): Promise<void> {
-    await updateDoc(doc(db, COLLECTIONS.products, id), {
-      ...updates,
-      updatedAt: Timestamp.now(),
-    });
-  },
-
-  // Update stock (optimized for high-frequency updates)
-  async updateStock(productId: string, quantityChange: number): Promise<void> {
-    const productRef = doc(db, COLLECTIONS.products, productId);
-    const productSnap = await getDoc(productRef);
-    
-    if (productSnap.exists()) {
-      const currentStock = productSnap.data().stock;
-      await updateDoc(productRef, {
-        stock: currentStock + quantityChange,
-        updatedAt: Timestamp.now(),
-      });
-    }
-  },
-
-  // Batch update stocks (for order processing)
-  async batchUpdateStocks(updates: { productId: string; quantity: number }[]): Promise<void> {
-    const batch = writeBatch(db);
-    
-    for (const update of updates) {
-      const productRef = doc(db, COLLECTIONS.products, update.productId);
-      batch.update(productRef, {
-        stock: update.quantity,
-        updatedAt: Timestamp.now(),
-      });
-    }
-    
-    await batch.commit();
-  },
-
-  // Real-time product subscription
-  subscribeToProducts(callback: (products: Product[]) => void) {
-    return onSnapshot(collection(db, COLLECTIONS.products), (snapshot) => {
-      const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-      callback(products);
-    });
-  },
-
-  // ============== ORDERS ==============
-  
-  // Create order with transaction
-  async createOrder(order: Omit<Order, 'id'>): Promise<string> {
-    const docRef = await addDoc(collection(db, COLLECTIONS.orders), {
-      ...order,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-    return docRef.id;
-  },
-
-  // Get user orders
-  async getUserOrders(userId: string): Promise<Order[]> {
-    const q = query(
-      collection(db, COLLECTIONS.orders),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
-  },
-};
-```
-
-### Step 7: Create Storage Service for Images
-
-Create `storefront/services/storageService.ts`:
-
-```typescript
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-} from 'firebase/storage';
-import { storage } from '../config/firebase';
-
-export const storageService = {
-  // Upload product image
-  async uploadProductImage(file: File, productId: string): Promise<string> {
-    const extension = file.name.split('.').pop();
-    const fileName = `products/${productId}/${Date.now()}.${extension}`;
-    const storageRef = ref(storage, fileName);
-    
-    // Compress image before upload (optional optimization)
-    const compressedFile = await compressImage(file);
-    
-    await uploadBytes(storageRef, compressedFile);
-    return getDownloadURL(storageRef);
-  },
-
-  // Upload invoice PDF
-  async uploadInvoice(file: Blob, invoiceId: string): Promise<string> {
-    const fileName = `invoices/${invoiceId}.pdf`;
-    const storageRef = ref(storage, fileName);
-    
-    await uploadBytes(storageRef, file);
-    return getDownloadURL(storageRef);
-  },
-
-  // Delete file
-  async deleteFile(filePath: string): Promise<void> {
-    const storageRef = ref(storage, filePath);
-    await deleteObject(storageRef);
-  },
-};
-
-// Helper function to compress images
-async function compressImage(file: File, maxWidth = 800): Promise<Blob> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d')!;
-        
-        let width = img.width;
-        let height = img.height;
-        
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.8);
-      };
-      img.src = e.target!.result as string;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-```
-
-### Step 8: Firestore Security Rules
-
-Create `firestore.rules`:
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    function isAdmin() {
-      return isAuthenticated() && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-    
-    // Products collection
-    match /products/{productId} {
-      // Anyone can read products
-      allow read: if true;
-      // Only admins can write
-      allow create, update, delete: if isAdmin();
-    }
-    
-    // Orders collection
-    match /orders/{orderId} {
-      // Users can read their own orders, admins can read all
-      allow read: if isOwner(resource.data.userId) || isAdmin();
-      // Authenticated users can create orders
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      // Only admins can update/delete
-      allow update, delete: if isAdmin();
-    }
-    
-    // Users collection
-    match /users/{userId} {
-      // Users can read/update their own profile
-      allow read, update: if isOwner(userId);
-      // Anyone can create (signup)
-      allow create: if true;
-      // Only admins can delete
-      allow delete: if isAdmin();
-    }
-    
-    // Parties collection (admin only)
-    match /parties/{partyId} {
-      allow read, write: if isAdmin();
-    }
-    
-    // Invoices collection (admin only)
-    match /invoices/{invoiceId} {
-      allow read, write: if isAdmin();
-    }
-  }
-}
-```
-
-### Step 9: Create Firestore Indexes
-
-Create `firestore.indexes.json`:
-
-```json
-{
-  "indexes": [
-    {
-      "collectionGroup": "products",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "category", "order": "ASCENDING" },
-        { "fieldPath": "stock", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "products",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "featured", "order": "ASCENDING" },
-        { "fieldPath": "stock", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "orders",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "orders",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    }
-  ]
-}
+// Get aging summary
+const aging = paymentService.getAgingSummary();
 ```
 
 ---
 
-## 🧮 Backend Architecture
+## API Reference
 
-### Optimized Query Algorithm
+### Inventory Service
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    FAST RESPONSE ARCHITECTURE                               │
-└─────────────────────────────────────────────────────────────────────────────┘
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `addStock` | itemId, quantity, price, refId, batch? | StockResult | Add stock with ledger entry |
+| `deductStock` | itemId, quantity, refId | StockResult | Remove stock with validation |
+| `adjustStock` | itemId, newQty, reason, refId | StockResult | Manual stock correction |
+| `getItemLedger` | itemId | LedgerEntry[] | Get item movement history |
+| `getStockValuation` | - | StockValuation | Total inventory value |
+| `getLowStockItems` | threshold? | Item[] | Items below min stock |
+| `validateStockAvailability` | itemId, qty, variantId? | StockCheck | Pre-check stock levels |
 
-                    REQUEST FLOW FOR PRODUCT LISTING
-                    ════════════════════════════════
+### Billing Service
 
-  Client Request          Cache Layer               Firestore
-       │                      │                        │
-       ▼                      │                        │
-┌──────────────┐              │                        │
-│ GET /products│              │                        │
-│ ?category=X  │              │                        │
-└──────┬───────┘              │                        │
-       │                      │                        │
-       ▼                      │                        │
-┌──────────────────────────────────────────────────────────────┐
-│              STEP 1: Check Memory Cache                      │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │  const cached = memoryCache.get(`products:${category}`)│ │
-│  │  if (cached && !isStale(cached)) return cached          │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-       │
-       │ (cache miss)
-       ▼
-┌──────────────────────────────────────────────────────────────┐
-│              STEP 2: Check IndexedDB (Offline)               │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │  // Firestore SDK handles this automatically            │ │
-│  │  // with enableIndexedDbPersistence()                   │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-       │
-       │ (offline data)
-       ▼
-┌──────────────────────────────────────────────────────────────┐
-│              STEP 3: Firestore Query (Optimized)             │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │  // Uses composite index for O(log n) lookup            │ │
-│  │  query(                                                  │ │
-│  │    collection(db, 'products'),                          │ │
-│  │    where('category', '==', category),                   │ │
-│  │    where('stock', '>', 0),                              │ │
-│  │    orderBy('stock', 'desc'),                            │ │
-│  │    limit(50)  // Pagination                             │ │
-│  │  )                                                       │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-       │
-       ▼
-┌──────────────────────────────────────────────────────────────┐
-│              STEP 4: Response Optimization                   │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │  // Only select needed fields (projection)              │ │
-│  │  // Compress response with gzip                         │ │
-│  │  // Cache for 5 minutes                                 │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `createSaleInvoice` | CreateSaleParams | InvoiceResult | Create sale with stock deduction |
+| `createPurchaseInvoice` | CreatePurchaseParams | InvoiceResult | Create purchase with stock addition |
+| `createReturnInvoice` | originalInvoiceId, items | InvoiceResult | Process returns |
+| `validateCreditLimit` | partyId, amount | CreditValidation | Check party credit |
+| `generateInvoiceNumber` | prefix | string | Auto-increment invoice ID |
+| `getInvoicesByParty` | partyId | Invoice[] | Party invoice history |
 
-                    REAL-TIME SYNC ALGORITHM
-                    ════════════════════════
+### GST Service
 
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│   Admin Dashboard              Firestore           Storefront│
-│        │                          │                     │    │
-│        │  updateStock(id, -5)     │                     │    │
-│        │─────────────────────────▶│                     │    │
-│        │                          │  onSnapshot()       │    │
-│        │                          │────────────────────▶│    │
-│        │                          │                     │    │
-│        │                          │  {stock: oldVal-5}  │    │
-│        │                          │  (delta update)     │    │
-│        │                          │                     ▼    │
-│        │                          │              ┌───────────┐│
-│        │                          │              │ UI Update ││
-│        │                          │              │ (< 100ms) ││
-│        │                          │              └───────────┘│
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `calculateGST` | amount, rate, isSameState | GSTBreakdown | Calculate tax components |
+| `prepareGstr1` | month, year | Gstr1Return | Generate GSTR-1 data |
+| `prepareGstr3b` | month, year | Gstr3bReturn | Generate GSTR-3B summary |
+| `getHsnSummary` | invoices | HsnSummary[] | HSN-wise tax breakdown |
+| `generateEInvoiceRequest` | invoiceId | EInvoicePayload | E-invoice JSON structure |
 
-                    SEARCH OPTIMIZATION ALGORITHM
-                    ═════════════════════════════
+### Payment Service
 
-┌──────────────────────────────────────────────────────────────┐
-│  Option 1: Client-Side Search (< 1000 products)              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │  const results = products.filter(p =>                    │ │
-│  │    p.name.toLowerCase().includes(query) ||               │ │
-│  │    p.tags.some(t => t.toLowerCase().includes(query))    │ │
-│  │  );                                                       │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                                                              │
-│  Option 2: Algolia Integration (> 1000 products)             │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │  // Cloud Function to sync Firestore → Algolia          │ │
-│  │  // Sub-50ms search with typo tolerance                 │ │
-│  │  const results = await index.search(query, {            │ │
-│  │    hitsPerPage: 20,                                     │ │
-│  │    filters: 'stock > 0'                                 │ │
-│  │  });                                                     │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-```
-
-### Performance Metrics Target
-
-| Operation | Target | Strategy |
-|-----------|--------|----------|
-| Product List | < 200ms | Composite indexes + pagination |
-| Product Detail | < 100ms | Document ID lookup |
-| Search | < 300ms | Client-side or Algolia |
-| Add to Cart | < 50ms | Optimistic UI update |
-| Place Order | < 500ms | Batch writes |
-| Admin Dashboard | < 500ms | Aggregated queries |
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `recordPaymentIn` | PaymentInParams | PaymentResult | Record receipt with allocation |
+| `recordPaymentOut` | PaymentOutParams | PaymentResult | Record payment to vendor |
+| `getOutstandingReceivables` | partyId? | Outstanding[] | Pending customer dues |
+| `getOutstandingPayables` | partyId? | Outstanding[] | Pending vendor dues |
+| `getAgingSummary` | partyId? | AgingSummary | Bucket-wise aging |
+| `getPartyLedger` | partyId | LedgerEntry[] | Party transaction history |
 
 ---
 
-## 🚀 Deployment Guide
+## Getting Started
 
-### Option 1: Firebase Hosting (Recommended)
+### Prerequisites
+
+- Node.js 18+
+- npm 9+
+
+### Quick Start
 
 ```bash
-# Install Firebase CLI
-npm install -g firebase-tools
+# 1. Clone and install
+git clone https://github.com/Rupesh192124081/inventory-management.git
+cd inventory-management
+npm install
 
-# Login to Firebase
-firebase login
+# 2. Start development servers
+npm run dev -- --port 5175  # Admin Dashboard
+cd storefront && npm install && npm run dev  # Storefront
 
-# Initialize Firebase in project
-firebase init
+# 3. Access the applications
+# Admin: http://localhost:5175
+# Storefront: http://localhost:5173
+```
 
-# Select:
-# - Hosting
-# - Firestore
-# - Storage
+### Project Structure
 
-# Build production bundle
-cd storefront
+```
+inventory-management/
+├── components/           # React components
+│   ├── Billing.tsx       # Sale/Purchase/Return invoicing
+│   ├── Inventory.tsx     # SKU and stock management
+│   ├── Parties.tsx       # Customer/Vendor CRM
+│   ├── GSTCompliance.tsx # GST returns and compliance
+│   ├── Reports.tsx       # Business analytics
+│   ├── StockLedger.tsx   # Stock movement audit
+│   └── ...
+├── services/             # Business logic layer
+│   ├── inventoryService.ts
+│   ├── billingService.ts
+│   ├── gstService.ts
+│   ├── paymentService.ts
+│   └── index.ts
+├── types/                # TypeScript definitions
+│   └── index.ts
+├── storefront/           # Customer-facing app
+│   ├── pages/
+│   ├── components/
+│   └── services/
+├── App.tsx               # Main admin app
+├── main.tsx              # Entry point
+└── README.md             # This file
+```
+
+---
+
+## Deployment
+
+### Build for Production
+
+```bash
+# Build admin dashboard
 npm run build
 
-# Deploy
-firebase deploy
+# Build storefront
+cd storefront && npm run build
 ```
 
-### Option 2: Vercel Deployment
+### Deployment Options
 
-```bash
-# Install Vercel CLI
-npm install -g vercel
+1. **Vercel** (Recommended)
+   ```bash
+   vercel deploy
+   ```
 
-# Deploy
-cd storefront
-vercel
+2. **Netlify**
+   - Connect GitHub repository
+   - Build command: `npm run build`
+   - Publish directory: `dist`
 
-# Set environment variables in Vercel dashboard
-```
+3. **Firebase Hosting**
+   ```bash
+   firebase deploy --only hosting
+   ```
 
-### Option 3: Docker Deployment
+### Environment Variables
 
-Create `Dockerfile`:
+For production, configure these in your deployment platform:
 
-```dockerfile
-FROM node:18-alpine AS builder
-
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/nginx.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
-```
-
-Create `nginx.conf`:
-
-```nginx
-events {
-  worker_connections 1024;
-}
-
-http {
-  include /etc/nginx/mime.types;
-  
-  server {
-    listen 80;
-    root /usr/share/nginx/html;
-    index index.html;
-    
-    # Enable gzip
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript;
-    
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
-      expires 1y;
-      add_header Cache-Control "public, immutable";
-    }
-    
-    # SPA fallback
-    location / {
-      try_files $uri $uri/ /index.html;
-    }
-  }
-}
-```
-
-### CI/CD with GitHub Actions
-
-Create `.github/workflows/deploy.yml`:
-
-```yaml
-name: Deploy to Firebase
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: |
-          npm ci
-          cd storefront && npm ci
-      
-      - name: Run tests
-        run: cd storefront && npm test
-      
-      - name: Build
-        run: cd storefront && npm run build
-        env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-      
-      - name: Deploy to Firebase
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          channelId: live
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+```env
+VITE_APP_NAME=Distributor ERP
+VITE_DEFAULT_GST_STATE=Karnataka
+VITE_ENABLE_ANALYTICS=true
 ```
 
 ---
 
-## 📊 Performance Optimization
-
-### 1. Code Splitting
-
-```typescript
-// Lazy load routes
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
-const Checkout = lazy(() => import('./pages/Checkout'));
-
-// In router
-<Suspense fallback={<Loading />}>
-  <Route path="/admin/*" element={<AdminDashboard />} />
-</Suspense>
-```
-
-### 2. Image Optimization
-
-```typescript
-// Use responsive images
-<img
-  srcSet={`${image}?w=400 400w, ${image}?w=800 800w`}
-  sizes="(max-width: 600px) 400px, 800px"
-  loading="lazy"
-  alt={name}
-/>
-```
-
-### 3. Virtual Scrolling for Large Lists
-
-```typescript
-import { useVirtualizer } from '@tanstack/react-virtual';
-
-function ProductList({ products }) {
-  const parentRef = useRef(null);
-  
-  const virtualizer = useVirtualizer({
-    count: products.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 200,
-  });
-  
-  return (
-    <div ref={parentRef} style={{ height: '100vh', overflow: 'auto' }}>
-      <div style={{ height: virtualizer.getTotalSize() }}>
-        {virtualizer.getVirtualItems().map((item) => (
-          <ProductCard key={item.key} product={products[item.index]} />
-        ))}
-      </div>
-    </div>
-  );
-}
-```
-
----
-
-## 📜 License
-
-MIT License - See LICENSE file for details.
-
----
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
-## 📞 Support
+## License
 
-For questions or support, please open an issue on GitHub.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-**Built with ❤️ by Vyapar Pro Team**
+## Contact
+
+**Rupesh** - [@Rupesh192124081](https://github.com/Rupesh192124081)
+
+Project Link: [https://github.com/Rupesh192124081/inventory-management](https://github.com/Rupesh192124081/inventory-management)

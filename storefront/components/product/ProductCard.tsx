@@ -2,6 +2,7 @@ import React from 'react';
 import { Item } from '../../types/storefront';
 import { ShoppingCart, Heart, Star } from 'lucide-react';
 import { useCart } from '../../hooks/useCart';
+import { useToast } from '../../contexts/ToastContext';
 
 interface ProductCardProps {
     product: Item;
@@ -9,22 +10,30 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     const { addToCart } = useCart();
+    const toast = useToast();
     const [isWishlisted, setIsWishlisted] = React.useState(false);
 
     const handleAddToCart = (e: React.MouseEvent) => {
         e.preventDefault();
         addToCart(product, null, 1);
-        // Show toast notification
+        toast.success(`${product.name} added to cart!`);
     };
 
     const handleWishlist = (e: React.MouseEvent) => {
         e.preventDefault();
         setIsWishlisted(!isWishlisted);
+        if (!isWishlisted) {
+            toast.info('Added to wishlist');
+        }
     };
 
     const discount = product.onSale && product.salePercentage
         ? Math.round(((product.purchasePrice - product.salePrice) / product.purchasePrice) * 100)
         : 0;
+
+    // Use actual rating if available, otherwise show placeholder
+    const rating = (product as any).rating || 4.5;
+    const reviewCount = (product as any).reviewCount || 0;
 
     return (
         <a href={`/product/${product.id}`} className="group block">
@@ -96,10 +105,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                     <div className="flex items-center gap-2 mb-3">
                         <div className="flex">
                             {[...Array(5)].map((_, i) => (
-                                <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                                <Star
+                                    key={i}
+                                    className={`w-4 h-4 ${i < Math.floor(rating) ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`}
+                                />
                             ))}
                         </div>
-                        <span className="text-xs text-slate-500">(4.5)</span>
+                        <span className="text-xs text-slate-500">
+                            {reviewCount > 0 ? `(${reviewCount})` : 'No reviews'}
+                        </span>
                     </div>
 
                     {/* Price */}

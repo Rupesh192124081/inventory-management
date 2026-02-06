@@ -1,5 +1,5 @@
-import React from 'react';
-import { ShoppingCart, User, Search, Heart, Menu, X } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { ShoppingCart, User, Search, Heart, Menu } from 'lucide-react';
 import { useCart } from '../../hooks/useCart';
 
 interface HeaderProps {
@@ -8,7 +8,24 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     const { itemCount } = useCart();
-    const [searchOpen, setSearchOpen] = React.useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const handleSearch = useCallback((e: React.FormEvent) => {
+        e.preventDefault();
+        if (searchQuery.trim()) {
+            const searchUrl = `/products?search=${encodeURIComponent(searchQuery.trim())}`;
+            window.history.pushState({}, '', searchUrl);
+            window.dispatchEvent(new PopStateEvent('popstate'));
+            setSearchOpen(false);
+        }
+    }, [searchQuery]);
+
+    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleSearch(e);
+        }
+    }, [handleSearch]);
 
     return (
         <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
@@ -31,16 +48,27 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     </div>
 
                     {/* Search Bar - Desktop */}
-                    <div className="hidden md:flex flex-1 max-w-xl mx-8">
+                    <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl mx-8">
                         <div className="relative w-full">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                             <input
                                 type="text"
                                 placeholder="Search products..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={handleKeyDown}
                                 className="w-full pl-12 pr-4 py-3 rounded-2xl border border-slate-200 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                             />
+                            {searchQuery && (
+                                <button
+                                    type="submit"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors"
+                                >
+                                    Search
+                                </button>
+                            )}
                         </div>
-                    </div>
+                    </form>
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 sm:gap-4">
@@ -77,17 +105,27 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
                 {/* Mobile Search */}
                 {searchOpen && (
-                    <div className="md:hidden pb-4">
+                    <form onSubmit={handleSearch} className="md:hidden pb-4">
                         <div className="relative">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                             <input
                                 type="text"
                                 placeholder="Search products..."
-                                className="w-full pl-12 pr-4 py-3 rounded-2xl border border-slate-200 focus:border-indigo-600 focus:outline-none"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-12 pr-20 py-3 rounded-2xl border border-slate-200 focus:border-indigo-600 focus:outline-none"
                                 autoFocus
                             />
+                            {searchQuery && (
+                                <button
+                                    type="submit"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-indigo-600 text-white rounded-xl text-sm font-bold"
+                                >
+                                    Go
+                                </button>
+                            )}
                         </div>
-                    </div>
+                    </form>
                 )}
             </div>
 

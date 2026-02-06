@@ -1,9 +1,22 @@
 import React from 'react';
-import { Trash2, Plus, Minus, ArrowRight, ShoppingBag } from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, AlertCircle } from 'lucide-react';
 import { useCart } from '../hooks/useCart';
+import { inventoryService } from '../services/inventoryService';
 
 const Cart: React.FC = () => {
     const { cart, updateQuantity, removeItem, total, itemCount } = useCart();
+
+    // Get product stock for validation
+    const getProductStock = (itemId: string, variantId?: string): number => {
+        const product = inventoryService.getProduct(itemId);
+        if (!product) return 0;
+
+        if (variantId && product.variants) {
+            const variant = product.variants.find(v => v.id === variantId);
+            return variant?.stock || 0;
+        }
+        return product.stock;
+    };
 
     if (cart.length === 0) {
         return (
@@ -37,6 +50,10 @@ const Cart: React.FC = () => {
                     <div className="lg:col-span-2 space-y-4">
                         {cart.map((item) => {
                             if (!item) return null;
+
+                            const maxStock = getProductStock(item.itemId, item.variantId);
+                            const isAtMaxStock = item.quantity >= maxStock;
+
                             return (
                                 <div key={`${item.itemId}-${item.variantId}`} className="bg-white rounded-3xl p-6 flex gap-6">
                                     {/* Image */}
@@ -56,29 +73,47 @@ const Cart: React.FC = () => {
                                         <p className="text-slate-500 text-sm mb-3">₹{item.price.toLocaleString()} each</p>
 
                                         {/* Quantity Controls */}
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
+                                                    <button
+                                                        onClick={() => updateQuantity(item.itemId, item.variantId, Math.max(1, item.quantity - 1))}
+                                                        className="w-8 h-8 bg-white rounded-lg flex items-center justify-center hover:bg-slate-200 transition-colors"
+                                                    >
+                                                        <Minus className="w-4 h-4" />
+                                                    </button>
+                                                    <span className="w-12 text-center font-bold">{item.quantity}</span>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (!isAtMaxStock) {
+                                                                updateQuantity(item.itemId, item.variantId, item.quantity + 1);
+                                                            }
+                                                        }}
+                                                        disabled={isAtMaxStock}
+                                                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isAtMaxStock
+                                                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                                                : 'bg-white hover:bg-slate-200'
+                                                            }`}
+                                                    >
+                                                        <Plus className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+
                                                 <button
-                                                    onClick={() => updateQuantity(item.itemId, item.variantId, Math.max(1, item.quantity - 1))}
-                                                    className="w-8 h-8 bg-white rounded-lg flex items-center justify-center hover:bg-slate-200 transition-colors"
+                                                    onClick={() => removeItem(item.itemId, item.variantId)}
+                                                    className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
                                                 >
-                                                    <Minus className="w-4 h-4" />
-                                                </button>
-                                                <span className="w-12 text-center font-bold">{item.quantity}</span>
-                                                <button
-                                                    onClick={() => updateQuantity(item.itemId, item.variantId, item.quantity + 1)}
-                                                    className="w-8 h-8 bg-white rounded-lg flex items-center justify-center hover:bg-slate-200 transition-colors"
-                                                >
-                                                    <Plus className="w-4 h-4" />
+                                                    <Trash2 className="w-5 h-5" />
                                                 </button>
                                             </div>
 
-                                            <button
-                                                onClick={() => removeItem(item.itemId, item.variantId)}
-                                                className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </button>
+                                            {/* Stock Warning */}
+                                            {isAtMaxStock && (
+                                                <div className="flex items-center gap-1.5 text-amber-600 text-xs font-medium">
+                                                    <AlertCircle className="w-3.5 h-3.5" />
+                                                    <span>Max available: {maxStock}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 

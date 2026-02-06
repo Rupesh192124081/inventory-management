@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ShoppingCart, Heart, Star, Minus, Plus, Shield, Truck, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Heart, Star, Minus, Plus, Shield, Truck, RotateCcw, Check } from 'lucide-react';
 import { inventoryService } from '../services/inventoryService';
 import { Item } from '../types/storefront';
 import { useCart } from '../hooks/useCart';
+import { useToast } from '../contexts/ToastContext';
 
 interface ProductDetailProps {
     productId: string;
@@ -13,7 +14,9 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ productId }) => {
     const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
     const [quantity, setQuantity] = useState(1);
     const [isWishlisted, setIsWishlisted] = useState(false);
+    const [addedToCart, setAddedToCart] = useState(false);
     const { addToCart } = useCart();
+    const toast = useToast();
 
     useEffect(() => {
         const item = inventoryService.getProduct(productId);
@@ -40,7 +43,18 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ productId }) => {
     const handleAddToCart = () => {
         const variant = selectedVariant ? product.variants?.find(v => v.id === selectedVariant) : null;
         addToCart(product, variant, quantity);
-        // Show success message (you can add a toast notification here)
+        toast.success(`${quantity} x ${product.name} added to cart!`);
+        setAddedToCart(true);
+        setTimeout(() => setAddedToCart(false), 2000);
+    };
+
+    const handleWishlist = () => {
+        setIsWishlisted(!isWishlisted);
+        if (!isWishlisted) {
+            toast.info('Added to wishlist');
+        } else {
+            toast.info('Removed from wishlist');
+        }
     };
 
     const currentPrice = selectedVariant
@@ -50,6 +64,10 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ productId }) => {
     const currentStock = selectedVariant
         ? product.variants?.find(v => v.id === selectedVariant)?.stock || product.stock
         : product.stock;
+
+    // Use actual rating if available
+    const rating = (product as any).rating || 4.5;
+    const reviewCount = (product as any).reviewCount || 128;
 
     return (
         <div className="min-h-screen bg-slate-50 py-12">
@@ -103,10 +121,15 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ productId }) => {
                         <div className="flex items-center gap-3 mb-6">
                             <div className="flex">
                                 {[...Array(5)].map((_, i) => (
-                                    <Star key={i} className="w-5 h-5 fill-amber-400 text-amber-400" />
+                                    <Star
+                                        key={i}
+                                        className={`w-5 h-5 ${i < Math.floor(rating) ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`}
+                                    />
                                 ))}
                             </div>
-                            <span className="text-slate-600">(4.5 stars · 128 reviews)</span>
+                            <span className="text-slate-600">
+                                ({rating} stars · {reviewCount} reviews)
+                            </span>
                         </div>
 
                         {/* Price */}
@@ -139,8 +162,8 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ productId }) => {
                                             key={variant.id}
                                             onClick={() => setSelectedVariant(variant.id)}
                                             className={`px-6 py-3 rounded-xl font-bold border-2 transition-all ${selectedVariant === variant.id
-                                                    ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
-                                                    : 'border-slate-200 hover:border-indigo-300'
+                                                ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
+                                                : 'border-slate-200 hover:border-indigo-300'
                                                 }`}
                                         >
                                             {variant.name}
@@ -163,10 +186,17 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ productId }) => {
                                 <span className="w-16 text-center text-2xl font-black">{quantity}</span>
                                 <button
                                     onClick={() => setQuantity(Math.min(currentStock, quantity + 1))}
-                                    className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center hover:bg-slate-200 transition-colors"
+                                    disabled={quantity >= currentStock}
+                                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${quantity >= currentStock
+                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                            : 'bg-slate-100 hover:bg-slate-200'
+                                        }`}
                                 >
                                     <Plus className="w-5 h-5" />
                                 </button>
+                                {quantity >= currentStock && (
+                                    <span className="text-xs text-amber-600 font-medium ml-2">Max available</span>
+                                )}
                             </div>
                         </div>
 
@@ -175,16 +205,30 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ productId }) => {
                             <button
                                 onClick={handleAddToCart}
                                 disabled={currentStock === 0}
-                                className="flex-1 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-700 disabled:bg-slate-300 transition-colors flex items-center justify-center gap-2"
+                                className={`flex-1 px-8 py-4 rounded-2xl font-bold text-lg transition-colors flex items-center justify-center gap-2 ${addedToCart
+                                        ? 'bg-green-600 text-white'
+                                        : currentStock === 0
+                                            ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                    }`}
                             >
-                                <ShoppingCart className="w-5 h-5" />
-                                Add to Cart
+                                {addedToCart ? (
+                                    <>
+                                        <Check className="w-5 h-5" />
+                                        Added!
+                                    </>
+                                ) : (
+                                    <>
+                                        <ShoppingCart className="w-5 h-5" />
+                                        Add to Cart
+                                    </>
+                                )}
                             </button>
                             <button
-                                onClick={() => setIsWishlisted(!isWishlisted)}
+                                onClick={handleWishlist}
                                 className={`w-16 h-16 rounded-2xl border-2 flex items-center justify-center transition-all ${isWishlisted
-                                        ? 'border-rose-500 bg-rose-50'
-                                        : 'border-slate-200 hover:border-rose-300'
+                                    ? 'border-rose-500 bg-rose-50'
+                                    : 'border-slate-200 hover:border-rose-300'
                                     }`}
                             >
                                 <Heart className={`w-6 h-6 ${isWishlisted ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
